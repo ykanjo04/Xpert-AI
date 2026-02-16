@@ -1,0 +1,12 @@
+fastapi>=0.115.0
+uvicorn>=0.32.0
+python-multipart>=0.0.18
+opencv-python
+numpy
+scikit-image
+tensorflow
+tf_keras
+pandas
+google-genai
+chromadb
+huggingface-hub

@@ -1,0 +1,118 @@
+# -------------------------
+# OS & editors
+# -------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.so
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+*.dist-info/
+pip-wheel-metadata/
+*.pyc
+
+# -------------------------
+# Node / Frontend
+# -------------------------
+node_modules/
+npm-debug.log*
+yarn-error.log*
+dist/
+build/
+
+# -------------------------
+# Data, models & artifacts (do not commit large blobs)
+# -------------------------
+data/
+ai-pipeline/models/
+models/
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.tflite
+*.pb
+
+# -------------------------
+# Logs, temp & caches
+# -------------------------
+*.log
+logs/
+tmp/
+*.tmp
+.cache/
+
+# -------------------------
+# Database
+# -------------------------
+*.sqlite3
+*.db
+
+# -------------------------
+# Docker
+# -------------------------
+docker-compose.override.yml
+docker-compose.*.yml
+*.tar
+
+# -------------------------
+# Secrets / config
+# -------------------------
+.env
+.env.local
+secrets.json
+credentials.json
+*.pem
+*.key
+
+# -------------------------
+# Tests / coverage
+# -------------------------
+.coverage
+htmlcov/
+pytest_cache/
+
+# -------------------------
+# Backend runtime (generated at runtime, not source)
+# -------------------------
+backend/uploads/
+backend/outputs/
+
+# -------------------------
+# ChromaDB knowledge base (large, auto-generated)
+# -------------------------
+ai-pipeline/adaptive-engine/knowledge_base/
+
+# -------------------------
+# Cursor IDE
+# -------------------------
+.cursor/
+
+# -------------------------
+# SQLite database (runtime generated)
+# -------------------------
+backend/xpert.db
+backend/xpert.db-wal
+backend/xpert.db-shm
+
+# -------------------------
+# Misc
+# -------------------------
+*.log
+*.bak
+*.swp
+
+# If you want a global gitignore for your machine, set it with:
+# git config --global core.excludesfile ~/.gitignore_global
