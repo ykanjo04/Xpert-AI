@@ -127,5 +127,23 @@
       document.body.appendChild(script);
 
     </script>
+    <script>
+    window.addEventListener("message", (event) => {
+      const data = event.data;
+      if (!data || !data.type) return;
+  
+      const unity = window.__XPERT_UNITY__;
+      if (!unity) return;
+  
+      if (data.type === "XPERT_SET_HEATMAP_URL") {
+        unity.SendMessage("Bridge", "SetHeatmapUrl", data.url);
+      }
+  
+      if (data.type === "XPERT_SET_OVERLAY") {
+        unity.SendMessage("Bridge", "SetOverlayEnabled", data.enabled ? "1" : "0");
+        unity.SendMessage("Bridge", "SetOverlayOpacity", String(data.opacity));
+      }
+    });
+  </script>
   </body>
 </html>
