@@ -23,6 +23,34 @@ const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
   const [layers, setLayers] = useState({ heatmap: true, skeleton: true, organs: true, vessels: false });
   const [opacity, setOpacity] = useState(80);
   const [activePanel, setActivePanel] = useState('reference'); // reference | enhanced | mask | gradcam
+    const unityFrameRef = useRef(null);
+
+  const gradcamUrl = pipelineData?.images?.gradcam || null;
+
+  const resolvedGradcamUrl = useMemo(() => {
+    if (!gradcamUrl) return null;
+
+    if (/^https?:\/\//i.test(gradcamUrl)) return gradcamUrl;
+
+    const BACKEND_ORIGIN = "http://localhost:8000";
+    return `${BACKEND_ORIGIN}${gradcamUrl}`;
+  }, [gradcamUrl]);
+
+  useEffect(() => {
+    if (!resolvedGradcamUrl) return;
+
+    unityFrameRef.current?.contentWindow?.postMessage(
+      { type: "XPERT_SET_HEATMAP_URL", url: resolvedGradcamUrl },
+      "*"
+    );
+  }, [resolvedGradcamUrl]);
+
+  useEffect(() => {
+    unityFrameRef.current?.contentWindow?.postMessage(
+      { type: "XPERT_SET_OVERLAY", opacity, enabled: !!layers.heatmap },
+      "*"
+    );
+  }, [opacity, layers.heatmap]);
 
   const toggleLayer = (layer) => setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
 
@@ -148,63 +176,33 @@ const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
 
         {/* CENTER: AR VIEWPORT */}
         <div className="flex-1 relative flex items-center justify-center">
-          <div className="relative w-[600px] h-[600px]">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[500px] bg-cyan-500/5 blur-3xl rounded-full"></div>
-
-            <svg
-              viewBox="0 0 200 240"
-              className={`w-full h-full drop-shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-opacity duration-500 ${layers.skeleton ? 'opacity-100' : 'opacity-10'}`}
-            >
-              <path d="M100 20 Q 150 20 160 80 Q 160 180 100 220 Q 40 180 40 80 Q 50 20 100 20" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-              {[40, 60, 80, 100, 120, 140, 160].map((y, i) => (
-                <path key={i} d={`M${50 - i * 2} ${y} Q 100 ${y + 10} ${150 + i * 2} ${y}`} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinecap="round" />
-              ))}
-              <path d="M100 20 L 100 220" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="4" />
-            </svg>
-
-            {/* Heatmap overlays driven by real Grad-CAM regions */}
-            {layers.heatmap && regions.length > 0 && regions.slice(0, 3).map((r, idx) => (
-              <div
-                key={idx}
-                className="absolute rounded-full mix-blend-screen animate-pulse"
-                style={{
-                  top: `${20 + idx * 18}%`,
-                  left: `${30 + idx * 10}%`,
-                  width: `${Math.min(r.w / 2, 120)}px`,
-                  height: `${Math.min(r.h / 2, 120)}px`,
-                  background: `rgba(${idx === 0 ? '239,68,68' : '234,179,8'}, ${r.intensity * 0.5})`,
-                  filter: `blur(${20 + idx * 10}px)`,
-                }}
-              />
-            ))}
-
-            {/* Fallback heat blobs when no regions */}
-            {layers.heatmap && regions.length === 0 && (
-              <>
-                <div className="absolute top-[25%] right-[35%] w-24 h-24 bg-yellow-500/20 blur-[30px] rounded-full mix-blend-screen"></div>
-              </>
-            )}
-
-            {layers.heatmap && regions.length > 0 && (
-              <div className="absolute top-[28%] right-[38%] group cursor-pointer">
-                <div className="w-4 h-4 rounded-full border-2 border-red-400 bg-red-500/20 animate-ping absolute"></div>
-                <div className="w-4 h-4 rounded-full border-2 border-red-400 bg-red-500/50 relative z-10"></div>
-                <div className="absolute left-6 top-0 bg-black/80 backdrop-blur-md border border-red-500/30 p-2 rounded-lg w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  <p className="text-[10px] text-red-300 font-bold uppercase">Primary Region</p>
-                  <p className="text-[10px] text-white/70">Intensity: {(regions[0].intensity * 100).toFixed(0)}% — {regions[0].w}×{regions[0].h}px</p>
-                </div>
-              </div>
-            )}
+          <div className="relative w-[820px] h-[620px] ar-glass-panel rounded-2xl overflow-hidden border border-white/10">
+            <iframe
+              ref={unityFrameRef}
+              title="Xpert Unity Viewer"
+              src="/unity/index.html"
+              className="w-full h-full"
+              style={{ border: 0 }}
+              allow="fullscreen"
+            />
           </div>
-
+        
           <div className="absolute bottom-8 px-6 py-3 ar-glass-panel rounded-full flex items-center gap-6">
             <div className="flex items-center gap-2 border-r border-white/10 pr-6">
               <Layers size={16} className="text-cyan-400" />
-              <span className="text-sm font-medium">Layer: {layers.skeleton ? 'Skeletal' : 'Soft Tissue'}</span>
+              <span className="text-sm font-medium">
+                Layer: {layers.skeleton ? 'Skeletal' : 'Soft Tissue'}
+              </span>
             </div>
+        
             <div className="flex items-center gap-2">
-              <Activity size={16} className={prediction === 'pneumonia' ? 'text-red-400' : 'text-green-400'} />
-              <span className="text-sm font-medium">Prediction: {prediction.toUpperCase()} ({scorePercent}%)</span>
+              <Activity
+                size={16}
+                className={prediction === 'pneumonia' ? 'text-red-400' : 'text-green-400'}
+              />
+              <span className="text-sm font-medium">
+                Prediction: {prediction.toUpperCase()} ({scorePercent}%)
+              </span>
             </div>
           </div>
         </div>
