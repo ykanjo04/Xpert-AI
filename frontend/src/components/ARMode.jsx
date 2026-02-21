@@ -7,7 +7,7 @@
  *   pipelineData  – { prediction, score, images: { enhanced, mask, gradcam }, gradcam_regions, quality }
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Activity,
