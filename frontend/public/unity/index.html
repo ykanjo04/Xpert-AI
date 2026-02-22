@@ -113,6 +113,7 @@
       script.src = loaderUrl;
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
+          window.__XPERT_UNITY__ = unityInstance;
           progressBarFull.style.width = 100 * progress + "%";
               }).then((unityInstance) => {
                 loadingBar.style.display = "none";
@@ -135,8 +136,8 @@
       const unity = window.__XPERT_UNITY__;
       if (!unity) return;
   
-      if (data.type === "XPERT_SET_HEATMAP_URL") {
-        unity.SendMessage("Bridge", "SetHeatmapUrl", data.url);
+      if (data.type === "XPERT_HEATMAP_JSON") {
+        unity.SendMessage("Bridge", "ReceiveHeatmapJson", data.json);
       }
   
       if (data.type === "XPERT_SET_OVERLAY") {
