@@ -46,6 +46,18 @@ const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
   }, [resolvedGradcamUrl]);
 
   useEffect(() => {
+    if (!pipelineData?.gradcam_regions) return;
+  
+    unityFrameRef.current?.contentWindow?.postMessage(
+      {
+        type: "XPERT_SET_HEATMAP_REGIONS",
+        regions: pipelineData.gradcam_regions
+      },
+      "*"
+    );
+  }, [pipelineData]);
+
+  useEffect(() => {
     unityFrameRef.current?.contentWindow?.postMessage(
       { type: "XPERT_SET_OVERLAY", opacity, enabled: !!layers.heatmap },
       "*"
