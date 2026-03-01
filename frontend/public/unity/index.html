@@ -113,9 +113,9 @@
       script.src = loaderUrl;
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
-          window.__XPERT_UNITY__ = unityInstance;
           progressBarFull.style.width = 100 * progress + "%";
               }).then((unityInstance) => {
+                window.__XPERT_UNITY__ = unityInstance;
                 loadingBar.style.display = "none";
                 fullscreenButton.onclick = () => {
                   unityInstance.SetFullscreen(1);
