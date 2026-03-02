@@ -115,6 +115,7 @@
         createUnityInstance(canvas, config, (progress) => {
           progressBarFull.style.width = 100 * progress + "%";
               }).then((unityInstance) => {
+                window.__XPERT_UNITY__ = unityInstance;
                 loadingBar.style.display = "none";
                 fullscreenButton.onclick = () => {
                   unityInstance.SetFullscreen(1);
@@ -125,6 +126,27 @@
             };
 
       document.body.appendChild(script);
+
+      window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || !data.type) return;
+      
+        const unity = window.__XPERT_UNITY__;
+        if (!unity) return;
+      
+        if (data.type === "XPERT_HEATMAP_JSON") {
+          unity.SendMessage("Bridge", "ReceiveHeatmapJson", data.json);
+        }
+      
+        if (data.type === "XPERT_SET_OVERLAY") {
+          unity.SendMessage("Bridge", "SetOverlayEnabled", data.enabled ? "1" : "0");
+          unity.SendMessage("Bridge", "SetOverlayOpacity", String(data.opacity ?? 80));
+        }
+      
+        if (data.type === "XPERT_SET_HEATMAP_URL") {
+          unity.SendMessage("Bridge", "SetHeatmapUrl", data.url);
+        }
+      });
 
     </script>
   </body>
