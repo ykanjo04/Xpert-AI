@@ -115,6 +115,7 @@
         createUnityInstance(canvas, config, (progress) => {
           progressBarFull.style.width = 100 * progress + "%";
               }).then((unityInstance) => {
+                window.__XPERT_UNITY__ = unityInstance;
                 loadingBar.style.display = "none";
                 fullscreenButton.onclick = () => {
                   unityInstance.SetFullscreen(1);
@@ -126,6 +127,32 @@
 
       document.body.appendChild(script);
 
+    </script>
+    <script>
+      window.addEventListener("message", (event) => {
+        const data = event.data;
+        if (!data || !data.type) return;
+    
+        const unity = window.__XPERT_UNITY__;
+        if (!unity) return;
+    
+        // 1) Send Grad-CAM regions JSON payload to Unity
+        if (data.type === "XPERT_HEATMAP_JSON") {
+          // Requires a GameObject named "Bridge" with method ReceiveHeatmapJson(string)
+          unity.SendMessage("Bridge", "ReceiveHeatmapJson", data.json);
+        }
+    
+        // 2) Toggle marker overlay
+        if (data.type === "XPERT_SET_OVERLAY") {
+          unity.SendMessage("Bridge", "SetOverlayEnabled", data.enabled ? "1" : "0");
+          // If you implemented SetOverlayOpacity in Unity later, you can send it too.
+          // unity.SendMessage("Bridge", "SetOverlayOpacity", String(data.opacity));
+        }
+    
+        if (data.type === "XPERT_SET_HEATMAP_URL") {
+          unity.SendMessage("Bridge", "SetHeatmapUrl", data.url);
+        }
+      });
     </script>
   </body>
 </html>
