@@ -54,12 +54,12 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/WebGL7.loader.js?v=" + BUILD_VERSION;
+      var loaderUrl = buildUrl + "/WebGL8.loader.js?v=" + BUILD_VERSION;
 
       var config = {
-        dataUrl: buildUrl + "/WebGL7.data?v=" + BUILD_VERSION,
-        frameworkUrl: buildUrl + "/WebGL7.framework.js?v=" + BUILD_VERSION,
-        codeUrl: buildUrl + "/WebGL7.wasm?v=" + BUILD_VERSION,
+        dataUrl: buildUrl + "/WebGL8.data?v=" + BUILD_VERSION,
+        frameworkUrl: buildUrl + "/WebGL8.framework.js?v=" + BUILD_VERSION,
+        codeUrl: buildUrl + "/WebGL8.wasm?v=" + BUILD_VERSION,
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "LungVisualization",
@@ -88,20 +88,15 @@
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
           progressBarFull.style.width = 100 * progress + "%";
-        })
-          .then((unityInstance) => {
-            window.__XPERT_UNITY__ = unityInstance;
-            console.log("INDEX.HTML LOADED ✅", new Date().toISOString());
-            console.log("Unity instance ready ✅", unityInstance);
-
-            loadingBar.style.display = "none";
-            fullscreenButton.onclick = () => {
-              unityInstance.SetFullscreen(1);
-            };
-          })
-          .catch((message) => {
-            alert(message);
-          });
+        }).then((unityInstance) => {
+          window.__XPERT_UNITY__ = unityInstance;
+    
+          console.log("INDEX.HTML LOADED ✅", new Date().toISOString());
+          console.log("Unity instance ready ✅", unityInstance);
+    
+          loadingBar.style.display = "none";
+          fullscreenButton.onclick = () => unityInstance.SetFullscreen(1);
+        }).catch((message) => alert(message));
       };
 
       document.body.appendChild(script);
@@ -111,19 +106,33 @@
         if (!data || !data.type) return;
 
         const unity = window.__XPERT_UNITY__;
-        if (!unity) return;
+        if (!unity) {
+          console.warn("Unity not ready yet, message ignored:", data.type);
+          return;
+        }
 
         if (data.type === "XPERT_HEATMAP_JSON") {
+          if (typeof data.json !== "string" || data.json.trim() === "") {
+            console.warn("XPERT_HEATMAP_JSON missing json string");
+            return;
+          }
           unity.SendMessage("Bridge", "ReceiveHeatmapJson", data.json);
+          return;
         }
 
         if (data.type === "XPERT_SET_OVERLAY") {
           unity.SendMessage("Bridge", "SetOverlayEnabled", data.enabled ? "1" : "0");
           unity.SendMessage("Bridge", "SetOverlayOpacity", String(data.opacity ?? 80));
+          return;
         }
 
         if (data.type === "XPERT_SET_HEATMAP_URL") {
+          if (typeof data.url !== "string" || data.url.trim() === "") {
+            console.warn("XPERT_SET_HEATMAP_URL missing url");
+            return;
+          }
           unity.SendMessage("Bridge", "SetHeatmapUrl", data.url);
+          return;
         }
       });
     </script>
