@@ -97,6 +97,8 @@
           .then((unityInstance) => {
             // Optional: expose instance (useful for debugging)
             window.__XPERT_UNITY__ = unityInstance;
+            console.log("INDEX.HTML LOADED ✅", new Date().toISOString());
+            console.log("Unity instance ready ✅", unityInstance);
 
             loadingBar.style.display = "none";
             fullscreenButton.onclick = () => {
