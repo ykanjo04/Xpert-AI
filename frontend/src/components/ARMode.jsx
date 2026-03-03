@@ -7,70 +7,114 @@
  *   pipelineData  – { prediction, score, images: { enhanced, mask, gradcam }, gradcam_regions, quality }
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ArrowLeft,
-  Activity,
-  Settings,
-  Layers,
-  Eye,
-  RefreshCw,
-  Camera,
-} from 'lucide-react';
-import { arStyles } from '../styles/customStyles';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Activity, Settings, Layers, Eye, RefreshCw, Camera } from "lucide-react";
+import { arStyles } from "../styles/customStyles";
 
 const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
-  const [layers, setLayers] = useState({ heatmap: true, skeleton: true, organs: true, vessels: false });
+  const [layers, setLayers] = useState({
+    heatmap: true,
+    skeleton: true,
+    organs: true,
+    vessels: false,
+  });
+
   const [opacity, setOpacity] = useState(80);
-  const [activePanel, setActivePanel] = useState('reference'); // reference | enhanced | mask | gradcam
-    const unityFrameRef = useRef(null);
+  const [activePanel, setActivePanel] = useState("reference"); // reference | enhanced | mask | gradcam
+
+  const unityFrameRef = useRef(null);
+
+  // Track when iframe is loaded so we can safely start messaging
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   const gradcamUrl = pipelineData?.images?.gradcam || null;
 
   const resolvedGradcamUrl = useMemo(() => {
     if (!gradcamUrl) return null;
-
     if (/^https?:\/\//i.test(gradcamUrl)) return gradcamUrl;
 
     const BACKEND_ORIGIN = "http://localhost:8000";
     return `${BACKEND_ORIGIN}${gradcamUrl}`;
   }, [gradcamUrl]);
 
-  useEffect(() => {
-    if (!resolvedGradcamUrl) return;
+  const regions = pipelineData?.gradcam_regions || [];
 
-    unityFrameRef.current?.contentWindow?.postMessage(
-      { type: "XPERT_SET_HEATMAP_URL", url: resolvedGradcamUrl },
-      "*"
-    );
-  }, [resolvedGradcamUrl]);
+  // Helper: postMessage to the Unity iframe (safe)
+  const postToUnity = useCallback((payload) => {
+    const win = unityFrameRef.current?.contentWindow;
+    if (!win) return false;
+    win.postMessage(payload, "*");
+    return true;
+  }, []);
 
-  useEffect(() => {
-    if (!pipelineData?.gradcam_regions) return;
-  
-    unityFrameRef.current?.contentWindow?.postMessage(
-      {
-        type: "XPERT_SET_HEATMAP_REGIONS",
-        regions: pipelineData.gradcam_regions
-      },
-      "*"
-    );
-  }, [pipelineData]);
+  /**
+   * Send everything Unity needs.
+   * We retry because Unity WebGL may take a moment after iframe load before it's ready to receive messages.
+   */
+  const sendUnityStateWithRetry = useCallback(() => {
+    if (!iframeLoaded) return;
 
+    let attempts = 0;
+    const maxAttempts = 25; // ~25 * 200ms = 5 seconds
+
+    const tick = () => {
+      attempts += 1;
+
+      // 1) Set overlay enabled/opacity (always safe)
+      postToUnity({
+        type: "XPERT_SET_OVERLAY",
+        enabled: !!layers.heatmap,
+        opacity,
+      });
+
+      // 2) Set heatmap URL (only if we have it)
+      if (resolvedGradcamUrl) {
+        postToUnity({
+          type: "XPERT_SET_HEATMAP_URL",
+          url: resolvedGradcamUrl,
+        });
+      }
+
+      // 3) Send regions as HEATMAP_JSON (THIS is what your index.html listens for)
+      // index.html expects: { type: "XPERT_HEATMAP_JSON", json: "<string>" }
+      if (regions && regions.length > 0) {
+        const json = JSON.stringify({
+          // minimum payload needed by your Unity script (it uses payload.regions)
+          regions: regions,
+        });
+
+        postToUnity({
+          type: "XPERT_HEATMAP_JSON",
+          json,
+        });
+      }
+
+      // If we already sent at least once after iframe load, we can stop early.
+      // But to be robust, we retry a few times in case Unity wasn't ready yet.
+      if (attempts < maxAttempts) {
+        setTimeout(tick, 200);
+      }
+    };
+
+    tick();
+  }, [iframeLoaded, layers.heatmap, opacity, resolvedGradcamUrl, regions, postToUnity]);
+
+  // Run once when iframe loads
+  const handleUnityIframeLoad = useCallback(() => {
+    setIframeLoaded(true);
+  }, []);
+
+  // Whenever relevant state/data changes, push to Unity (with retry)
   useEffect(() => {
-    unityFrameRef.current?.contentWindow?.postMessage(
-      { type: "XPERT_SET_OVERLAY", opacity, enabled: !!layers.heatmap },
-      "*"
-    );
-  }, [opacity, layers.heatmap]);
+    if (!iframeLoaded) return;
+    sendUnityStateWithRetry();
+  }, [iframeLoaded, sendUnityStateWithRetry]);
 
   const toggleLayer = (layer) => setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
 
   const score = pipelineData.score ?? 0;
-  const prediction = pipelineData.prediction || 'unknown';
+  const prediction = pipelineData.prediction || "unknown";
   const scorePercent = (score * 100).toFixed(1);
-  const qualityLabel = pipelineData.quality?.label || '—';
-  const regions = pipelineData.gradcam_regions || [];
 
   const panelImages = {
     reference: imageData,
@@ -121,14 +165,14 @@ const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
           <div className="ar-glass-panel p-4 rounded-2xl">
             <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3">Scan Views</h3>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              {(['reference', 'enhanced', 'mask', 'gradcam']).map((key) => (
+              {["reference", "enhanced", "mask", "gradcam"].map((key) => (
                 <button
                   key={key}
                   onClick={() => setActivePanel(key)}
                   className={`px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all ${
                     activePanel === key
-                      ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                      : 'border-white/10 text-white/40 hover:bg-white/5'
+                      ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
+                      : "border-white/10 text-white/40 hover:bg-white/5"
                   }`}
                 >
                   {key}
@@ -144,16 +188,21 @@ const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
             </div>
           </div>
 
-          {/* Diagnostics — REAL DATA */}
+          {/* Diagnostics */}
           <div className="ar-glass-panel p-5 rounded-2xl flex-1">
             <h3 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-4">Diagnostic Context</h3>
+
             <div className="space-y-4">
-              <div className={`p-3 rounded-xl border ${prediction === 'pneumonia' ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'}`}>
-                <h4 className={`font-bold text-sm mb-1 ${prediction === 'pneumonia' ? 'text-red-300' : 'text-green-300'}`}>
-                  {prediction === 'pneumonia' ? 'Anomaly Detected' : 'No Anomaly Detected'}
+              <div
+                className={`p-3 rounded-xl border ${
+                  prediction === "pneumonia" ? "bg-red-500/10 border-red-500/20" : "bg-green-500/10 border-green-500/20"
+                }`}
+              >
+                <h4 className={`font-bold text-sm mb-1 ${prediction === "pneumonia" ? "text-red-300" : "text-green-300"}`}>
+                  {prediction === "pneumonia" ? "Anomaly Detected" : "No Anomaly Detected"}
                 </h4>
                 <p className="text-xs text-white/70 leading-relaxed">
-                  {prediction === 'pneumonia'
+                  {prediction === "pneumonia"
                     ? `AI detected features consistent with pneumonia (score: ${scorePercent}%).`
                     : `Scan classified as normal (score: ${scorePercent}%).`}
                 </p>
@@ -163,20 +212,23 @@ const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
                 <span className="text-white/60">Confidence</span>
                 <span className="font-mono text-cyan-300">{scorePercent}%</span>
               </div>
-              <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
-                <span className="text-white/60">Enhanced</span>
-                <span className="font-mono text-green-300">Yes</span>
-              </div>
+
               <div className="flex justify-between items-center text-sm border-b border-white/5 pb-2">
                 <span className="text-white/60">Grad-CAM Regions</span>
                 <span className="font-mono text-white">{regions.length}</span>
               </div>
+
               {regions.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-[10px] text-white/40 uppercase tracking-widest">Top Regions</p>
                   {regions.slice(0, 3).map((r, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-xs bg-white/5 rounded-lg px-3 py-2 border border-white/5">
-                      <span className="text-white/60">Region {idx + 1} ({r.w}×{r.h})</span>
+                    <div
+                      key={idx}
+                      className="flex justify-between items-center text-xs bg-white/5 rounded-lg px-3 py-2 border border-white/5"
+                    >
+                      <span className="text-white/60">
+                        Region {idx + 1} ({r.w}×{r.h})
+                      </span>
                       <span className="font-mono text-red-300">{(r.intensity * 100).toFixed(0)}%</span>
                     </div>
                   ))}
@@ -196,22 +248,18 @@ const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
               className="w-full h-full"
               style={{ border: 0 }}
               allow="fullscreen"
+              onLoad={handleUnityIframeLoad}
             />
           </div>
-        
+
           <div className="absolute bottom-8 px-6 py-3 ar-glass-panel rounded-full flex items-center gap-6">
             <div className="flex items-center gap-2 border-r border-white/10 pr-6">
               <Layers size={16} className="text-cyan-400" />
-              <span className="text-sm font-medium">
-                Layer: {layers.skeleton ? 'Skeletal' : 'Soft Tissue'}
-              </span>
+              <span className="text-sm font-medium">Layer: {layers.skeleton ? "Skeletal" : "Soft Tissue"}</span>
             </div>
-        
+
             <div className="flex items-center gap-2">
-              <Activity
-                size={16}
-                className={prediction === 'pneumonia' ? 'text-red-400' : 'text-green-400'}
-              />
+              <Activity size={16} className={prediction === "pneumonia" ? "text-red-400" : "text-green-400"} />
               <span className="text-sm font-medium">
                 Prediction: {prediction.toUpperCase()} ({scorePercent}%)
               </span>
@@ -227,22 +275,22 @@ const ARMode = ({ onClose, imageData, pipelineData = {} }) => {
             </h3>
             <div className="space-y-3">
               {[
-                { id: 'heatmap', label: 'AI Heatmap', color: 'bg-red-500' },
-                { id: 'skeleton', label: 'Skeletal Structure', color: 'bg-white' },
-                { id: 'organs', label: 'Vital Organs', color: 'bg-blue-500' },
-                { id: 'vessels', label: 'Blood Vessels', color: 'bg-purple-500' },
+                { id: "heatmap", label: "AI Heatmap", color: "bg-red-500" },
+                { id: "skeleton", label: "Skeletal Structure", color: "bg-white" },
+                { id: "organs", label: "Vital Organs", color: "bg-blue-500" },
+                { id: "vessels", label: "Blood Vessels", color: "bg-purple-500" },
               ].map((layer) => (
                 <button
                   key={layer.id}
                   onClick={() => toggleLayer(layer.id)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
                     layers[layer.id]
-                      ? 'bg-white/10 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.1)]'
-                      : 'bg-transparent border-white/5 hover:bg-white/5'
+                      ? "bg-white/10 border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.1)]"
+                      : "bg-transparent border-white/5 hover:bg-white/5"
                   }`}
                 >
                   <span className="text-sm font-medium text-white/90">{layer.label}</span>
-                  <div className={`w-2 h-2 rounded-full ${layers[layer.id] ? layer.color : 'bg-white/10'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${layers[layer.id] ? layer.color : "bg-white/10"}`}></div>
                 </button>
               ))}
             </div>
