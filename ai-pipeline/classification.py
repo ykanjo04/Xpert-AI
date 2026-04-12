@@ -36,6 +36,8 @@ from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D
 from tensorflow.keras.metrics import AUC
 from tensorflow.keras.optimizers import Adam
 
+import cv2
+
 
 # --------------------------------------------------------------------------- #
 # Data loading and preprocessing
@@ -385,9 +387,9 @@ def infer(
 
     heatmap_path = output_dir / "gradcam_heatmap.png"
     heatmap_np = (heatmap_float * 255).astype(np.uint8)
-    if heatmap_np.ndim == 2:
-        heatmap_np = np.expand_dims(heatmap_np, axis=-1)
-    tf.keras.utils.save_img(str(heatmap_path), heatmap_np, scale=False)
+    colored_heatmap = cv2.applyColorMap(heatmap_np, cv2.COLORMAP_HOT)
+    colored_heatmap = cv2.cvtColor(colored_heatmap, cv2.COLOR_BGR2RGB)
+    tf.keras.utils.save_img(str(heatmap_path), colored_heatmap, scale=False)
 
     result = {
         "pneumonia_score": float(pred),
