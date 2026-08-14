@@ -16,6 +16,24 @@ Xpert is a full-stack educational platform that helps **medical students** learn
 
 ---
 
+
+## Research Publication
+
+Xpert is supported by our peer-reviewed research published through IEEE.
+
+**[EXACT PAPER TITLE]**  
+*Islam Al-Mamoori, [other authors exactly as published]*
+
+Published in **IEEE Xplore**, 2026.
+
+[Read the publication on IEEE Xplore](https://ieeexplore.ieee.org/document/11550602)
+
+The paper presents the research behind Xpert's AI-assisted approach to
+chest X-ray interpretation, including the system's design, evaluation,
+and use of explainable AI for pneumonia detection.
+
+---
+
 ## AI Pipeline
 
 Every uploaded X-ray passes through six stages in sequence. The output of each stage feeds into the next:
