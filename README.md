@@ -238,3 +238,18 @@ npm run dev
 | `GET` | `/api/outputs/{path}` | Serve pipeline output images |
 
 ---
+## License & Use
+
+Copyright © 2026 Islam Al-Mamoori, Celine Daou, Yahya Kanjo,
+Ibraheem Ahmad, Muhammad Raza, and Milan Dordevic.
+
+**All Rights Reserved.**
+
+Xpert is publicly available for academic review, research reference,
+demonstration, and portfolio purposes. Reuse, modification, redistribution,
+or commercial use of the original Xpert materials requires prior written
+permission from the copyright holders.
+
+Third-party components remain subject to their respective licenses and terms.
+
+See [LICENSE.md](LICENSE.md) for full terms.
