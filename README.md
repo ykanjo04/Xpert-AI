@@ -21,8 +21,8 @@ Xpert is a full-stack educational platform that helps **medical students** learn
 
 Xpert is supported by our peer-reviewed research published through IEEE.
 
-**[EXACT PAPER TITLE]**  
-*Islam Al-Mamoori, [other authors exactly as published]*
+**Xpert: Bridging the Expertise Gap in Pneumonia Diagnosis through Explainable Deep Learning and Adaptive Pedagogical Feedback**  
+*Islam Al-Mamoori, Celine Daou; Yahya Kanjo; Ibraheem Ahmad; Muhammad Raza; Milan Dordevic*
 
 Published in **IEEE Xplore**, 2026.
 
